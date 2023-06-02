@@ -1,2 +1,2 @@
-# vault-plugin-secrets-kms
-Hashicorp Vault plugin for Parameta W
+# Hashicorp Vault KMS plugin for Parameta W
+
