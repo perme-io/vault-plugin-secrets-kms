@@ -1,4 +1,4 @@
-package secretsengine
+package kms
 
 import (
 	"context"

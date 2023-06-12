@@ -1,4 +1,4 @@
-package secretsengine
+package kms
 
 import (
 	"context"
@@ -35,10 +35,14 @@ func backend() *kmsBackend {
 		PathsSpecial: &logical.Paths{
 			LocalStorage: []string{},
 			SealWrapStorage: []string{
-				"config",
+				"did",
+				"wallet",
 			},
 		},
-		Paths:       framework.PathAppend(),
+		Paths: framework.PathAppend(
+			pathWallet(&b),
+			pathSign(&b),
+		),
 		Secrets:     []*framework.Secret{},
 		BackendType: logical.TypeLogical,
 		Invalidate:  b.invalidate,
