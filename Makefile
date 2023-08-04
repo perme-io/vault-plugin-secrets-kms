@@ -17,5 +17,8 @@ build-macos:
 
 build: build-linux build-macos
 
+test:
+	go test -v
+
 clean:
 	@rm -rf $(VAULT_DIR)

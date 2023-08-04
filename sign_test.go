@@ -125,7 +125,7 @@ func TestTxSignCompactSerialized(t *testing.T) {
 		t.Errorf("error=%v", err)
 	}
 
-	publicKey, err := secp256k1.ParsePubKey(pubKeyBytes)
+	publicKey, _ := secp256k1.ParsePubKey(pubKeyBytes)
 
 	// Sign a tx using the private key.
 	serializedBytes := []byte(serializedString)

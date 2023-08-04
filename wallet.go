@@ -8,10 +8,12 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
-	walletStoragePath = "wallet"
+	WalletStoragePath   = "wallet"
+	PublicKeyHashOffset = 20
 )
 
 type kmsWallet struct {
@@ -82,7 +84,7 @@ func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
-	walletPath := walletStoragePath + "/" + username
+	walletPath := WalletStoragePath + "/" + username
 
 	wallet, err := getWallet(ctx, req, walletPath)
 	if err != nil {
@@ -100,13 +102,24 @@ func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d
 	return resp, nil
 }
 
+func getPublicKeyAddress(pubKeyCompressed []byte) string {
+	pubKeyHash := sha3.Sum256(pubKeyCompressed[1:])
+
+	startIndex := len(pubKeyHash) - PublicKeyHashOffset
+	address := "hx" + hex.EncodeToString(pubKeyHash[startIndex:])
+
+	return address
+}
+
 func createWallet() (*kmsWallet, error) {
 	wallet := &kmsWallet{}
 
 	if privateKey, err := secp256k1.GeneratePrivateKey(); err == nil {
+		pubKeyUncompressed := privateKey.PubKey().SerializeUncompressed()
+
 		wallet.PrivateKey = hex.EncodeToString(privateKey.Serialize())
-		wallet.Address = privateKey.Key.String()
-		wallet.PublicKey = hex.EncodeToString(privateKey.PubKey().SerializeCompressed())
+		wallet.PublicKey = hex.EncodeToString(pubKeyUncompressed)
+		wallet.Address = getPublicKeyAddress(pubKeyUncompressed)
 	} else {
 		return nil, err
 	}
@@ -131,7 +144,7 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("failed to create wallet")
 	}
 
-	walletPath := walletStoragePath + "/" + username
+	walletPath := WalletStoragePath + "/" + username
 	entry, err := logical.StorageEntryJSON(walletPath, wallet)
 	if err != nil {
 		return nil, err
@@ -152,7 +165,7 @@ func (b *kmsBackend) pathWalletDelete(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
-	err := req.Storage.Delete(ctx, walletStoragePath+"/"+username)
+	err := req.Storage.Delete(ctx, WalletStoragePath+"/"+username)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting wallet: %w", err)
 	}
