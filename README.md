@@ -1,9 +1,17 @@
 # Hashicorp Vault KMS plugin for Parameta W
 
-## build
+## Build
 
-build binary for linux and MacOS.
+Build binary for linux and MacOS.
 
-```
+```shell
 make
+```
+
+## Test
+
+Start unittest `*_test.go` files.
+
+```shell
+make test
 ```
