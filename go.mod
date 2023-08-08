@@ -3,6 +3,7 @@ module github.com/iconloop/vault-plugin-secrets-kms
 go 1.20
 
 require (
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/vault/api v1.9.2
 	github.com/hashicorp/vault/sdk v0.9.1
