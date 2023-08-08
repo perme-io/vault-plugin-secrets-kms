@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	WalletStoragePath   = "wallet"
-	PublicKeyHashOffset = 20
+	walletStoragePath   = "wallet"
+	publicKeyHashOffset = 20
 )
 
 type kmsWallet struct {
@@ -84,7 +84,7 @@ func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
-	walletPath := WalletStoragePath + "/" + username
+	walletPath := walletStoragePath + "/" + username
 
 	wallet, err := getWallet(ctx, req, walletPath)
 	if err != nil {
@@ -105,7 +105,7 @@ func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d
 func getPublicKeyAddress(pubKeyCompressed []byte) string {
 	pubKeyHash := sha3.Sum256(pubKeyCompressed[1:])
 
-	beginIndex := len(pubKeyHash) - PublicKeyHashOffset
+	beginIndex := len(pubKeyHash) - publicKeyHashOffset
 	address := "hx" + hex.EncodeToString(pubKeyHash[beginIndex:])
 
 	return address
@@ -144,7 +144,7 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("failed to create wallet")
 	}
 
-	walletPath := WalletStoragePath + "/" + username
+	walletPath := walletStoragePath + "/" + username
 	entry, err := logical.StorageEntryJSON(walletPath, wallet)
 	if err != nil {
 		return nil, err
@@ -165,7 +165,7 @@ func (b *kmsBackend) pathWalletDelete(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
-	err := req.Storage.Delete(ctx, WalletStoragePath+"/"+username)
+	err := req.Storage.Delete(ctx, walletStoragePath+"/"+username)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting wallet: %w", err)
 	}

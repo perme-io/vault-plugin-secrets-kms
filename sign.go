@@ -110,7 +110,7 @@ func (b *kmsBackend) pathSignCreate(ctx context.Context, req *logical.Request, d
 		return nil, fmt.Errorf("missing txSerialized in sign")
 	}
 
-	walletPath := WalletStoragePath + "/" + username
+	walletPath := walletStoragePath + "/" + username
 
 	wallet, err := getWallet(ctx, req, walletPath)
 	if err != nil {
