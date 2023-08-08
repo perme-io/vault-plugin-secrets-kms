@@ -11,34 +11,6 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-func TestTxSerialize(t *testing.T) {
-	t.Skip()
-
-	txData := map[string]interface{}{
-		"version":   "0x3",
-		"from":      "hxbe258ceb872e08851f1f59694dac2558708ece11",
-		"to":        "hx5bfdb090f43a808005ffc27c25b213145e80b7cd",
-		"value":     "0xde0b6b3a7640000",
-		"stepLimit": "0x12345",
-		"timestamp": "0x563a6cf330136",
-		"nid":       "0x1",
-		"nonce":     "0x1",
-	}
-	t.Logf("txData=%v", txData)
-
-	serialized := Serialize(txData)
-	t.Logf("txData serialized=%v", serialized)
-
-	expected := "icx_sendTransaction" +
-		".from.hxbe258ceb872e08851f1f59694dac2558708ece11" +
-		".nid.0x1.nonce.0x1.stepLimit.0x12345.timestamp.0x563a6cf330136" +
-		".to.hx5bfdb090f43a808005ffc27c25b213145e80b7cd.value.0xde0b6b3a7640000" +
-		".version.0x3"
-
-	t.Logf("serialized expected=%v", expected)
-	require.Equalf(t, expected, serialized, "TxSerialize: expected=%v actual=%v", expected, serialized)
-}
-
 func TestTxSign(t *testing.T) {
 	wallet, _ := createWallet()
 
@@ -88,7 +60,7 @@ func TestTxSignSerialized(t *testing.T) {
 	}
 
 	privKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
-	publicKey, err := secp256k1.ParsePubKey(pubKeyBytes)
+	publicKey, _ := secp256k1.ParsePubKey(pubKeyBytes)
 
 	// Sign a tx using the private key.
 	serializedBytes := []byte(serializedString)
@@ -150,7 +122,7 @@ func TestTxSignCompactSerialized(t *testing.T) {
 
 	require.Equalf(t, 65, len(compactSignature), "signature length: expected=65, actual=%v", len(compactSignature))
 
-	pubKey, compressed, err := ecdsa.RecoverCompact(compactSignature, messageHash[:])
+	pubKey, compressed, _ := ecdsa.RecoverCompact(compactSignature, messageHash[:])
 	t.Logf("recovered pubKey=%x, compressed=%v", pubKey.SerializeCompressed(), compressed)
 
 	require.Equalf(t, publicKey, pubKey, "recovered publicKey: expected %x, actual=%x", publicKey.SerializeCompressed(), pubKey.SerializeCompressed())

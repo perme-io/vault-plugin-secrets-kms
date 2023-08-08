@@ -105,8 +105,8 @@ func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d
 func getPublicKeyAddress(pubKeyCompressed []byte) string {
 	pubKeyHash := sha3.Sum256(pubKeyCompressed[1:])
 
-	startIndex := len(pubKeyHash) - PublicKeyHashOffset
-	address := "hx" + hex.EncodeToString(pubKeyHash[startIndex:])
+	beginIndex := len(pubKeyHash) - PublicKeyHashOffset
+	address := "hx" + hex.EncodeToString(pubKeyHash[beginIndex:])
 
 	return address
 }

@@ -4,10 +4,7 @@ import (
 	"context"
 	b64 "encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
-	"reflect"
-	"sort"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
@@ -20,60 +17,6 @@ const (
 	// https://github.com/decred/dcrd/blob/dcrec/secp256k1/v4.2.0/dcrec/secp256k1/ecdsa/signature.go#L738
 	compactMagicOffset = 27
 )
-
-func innerSerialize(txData map[string]interface{}, keys []string) (string, error) {
-	var ret string
-
-	for _, key := range keys {
-		value := txData[key]
-
-		if value == nil {
-			ret += `\0`
-			continue
-		}
-
-		vt := reflect.ValueOf(value)
-		switch vt.Kind() {
-		case reflect.String:
-			fmt.Printf("%v:%v", key, value)
-			return fmt.Sprintf("%v.%v", key, value), nil
-		case reflect.Map:
-			innerData := vt.Interface().(map[string]interface{})
-			innerKeys := make([]string, 0, len(innerData))
-			for k := range innerData {
-				innerKeys = append(innerKeys, k)
-			}
-			return innerSerialize(innerData, innerKeys)
-		case reflect.Array:
-			var arrRet string
-			arrayData := vt.Interface().([]string)
-			for _, value := range arrayData {
-				arrRet += value
-				arrRet += "."
-			}
-			return arrRet, nil
-		default:
-			fmt.Printf("%v:%v", key, value)
-			return "", errors.New(fmt.Sprintf("invaild type: %v", vt))
-		}
-	}
-
-	return ret, nil
-}
-
-// TODO : not implemented
-func Serialize(txData map[string]interface{}) string {
-	sortedKeys := make([]string, 0, len(txData))
-	for k := range txData {
-		sortedKeys = append(sortedKeys, k)
-	}
-
-	sort.Strings(sortedKeys)
-
-	innerSerialize(txData, sortedKeys)
-
-	return ""
-}
 
 // rearrangeSignature
 //
@@ -111,8 +54,6 @@ func signCompact(privKeyString string, serializedString string) (string, error) 
 	// Compact signature format:
 	// <1-byte compact sig recovery code><32-byte R><32-byte S>
 	signature := ecdsa.SignCompact(privKey, messageHash[:], false)
-
-	fmt.Printf("signature: %x", signature)
 
 	compactSig := rearrangeSignature(signature, true)
 
