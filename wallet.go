@@ -32,6 +32,11 @@ func pathWallet(b *kmsBackend) []*framework.Path {
 					Description: "username of wallet",
 					Required:    true,
 				},
+				"address": {
+					Type:        framework.TypeString,
+					Description: "address of wallet",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -51,6 +56,11 @@ func pathWallet(b *kmsBackend) []*framework.Path {
 			HelpDescription: pathWalletHelpDescription,
 		},
 	}
+}
+
+func getWalletPath(username string, address string) string {
+	userPath := username + "/" + address
+	return walletStoragePath + "/" + userPath
 }
 
 func getWallet(ctx context.Context, req *logical.Request, walletPath string) (*kmsWallet, error) {
@@ -84,7 +94,14 @@ func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
-	walletPath := walletStoragePath + "/" + username
+	var address string
+	if addr, ok := d.GetOk("address"); ok {
+		address = addr.(string)
+	} else if !ok {
+		return nil, fmt.Errorf("missing address in wallet")
+	}
+
+	walletPath := getWalletPath(username, address)
 
 	wallet, err := getWallet(ctx, req, walletPath)
 	if err != nil {
@@ -144,7 +161,7 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("failed to create wallet")
 	}
 
-	walletPath := walletStoragePath + "/" + username
+	walletPath := getWalletPath(username, wallet.Address)
 	entry, err := logical.StorageEntryJSON(walletPath, wallet)
 	if err != nil {
 		return nil, err
