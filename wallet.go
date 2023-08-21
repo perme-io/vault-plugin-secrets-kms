@@ -171,7 +171,13 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 		return nil, err
 	}
 
-	return nil, nil
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"address": wallet.Address,
+		},
+	}
+
+	return resp, nil
 }
 
 func (b *kmsBackend) pathWalletDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
