@@ -1,12 +1,15 @@
 package kms
 
 import (
+	"context"
 	b64 "encoding/base64"
 	"encoding/hex"
 	"testing"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
+	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
 )
@@ -126,4 +129,65 @@ func TestTxSignCompactSerialized(t *testing.T) {
 	t.Logf("recovered pubKey=%x, compressed=%v", pubKey.SerializeCompressed(), compressed)
 
 	require.Equalf(t, publicKey, pubKey, "recovered publicKey: expected %x, actual=%x", publicKey.SerializeCompressed(), pubKey.SerializeCompressed())
+}
+
+// TestSign mocks the creation of the backend sign for kms.
+func TestSign(t *testing.T) {
+	b, reqStorage := getTestBackend(t)
+
+	t.Run("Test Sign", func(t *testing.T) {
+		resp, err := testWalletCreate(t, b, reqStorage, map[string]interface{}{
+			"username": username,
+		})
+
+		assert.NoError(t, err)
+
+		var walletAddress string
+		if addr, ok := resp.Data["address"]; ok {
+			walletAddress = addr.(string)
+		}
+
+		t.Logf("wallet address : %v", walletAddress)
+
+		serializedString := "icx_sendTransaction" +
+			".from." + walletAddress +
+			".nid.0x7.nonce.0x1.stepLimit.0x11b340.timestamp.0x5fdaf54c5ed34" +
+			".to.cxcb952e97e554800a1da099e5102079ceda03b277.value.0x8ac7230489e80000" +
+			".version.0x3"
+
+		reqData := map[string]interface{}{
+			"username":     username,
+			"address":      walletAddress,
+			"txSerialized": serializedString,
+		}
+		resp, err = testSignCreate(t, b, reqStorage, reqData)
+
+		assert.NoError(t, err)
+
+		sign, ok := resp.Data["signature"]
+
+		assert.True(t, ok)
+		assert.NotNil(t, sign)
+
+		t.Logf("signature : %v", sign.(string))
+	})
+}
+
+func testSignCreate(t *testing.T, b logical.Backend, s logical.Storage, d map[string]interface{}) (*logical.Response, error) {
+	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		Operation:   logical.CreateOperation,
+		ClientToken: token,
+		Path:        walletStoragePath + "/sign",
+		Data:        d,
+		Storage:     s,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if resp != nil && resp.IsError() {
+		return nil, resp.Error()
+	}
+	return resp, nil
 }
