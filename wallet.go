@@ -151,7 +151,9 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 
 	var username string
 	if un, ok := d.GetOk("username"); ok {
-		username = un.(string)
+		if username = un.(string); username == "" {
+			return nil, fmt.Errorf("empty username in wallet")
+		}
 	} else if !ok {
 		return nil, fmt.Errorf("missing username in wallet")
 	}
@@ -181,14 +183,29 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 }
 
 func (b *kmsBackend) pathWalletDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	if req.ClientToken == "" {
+		return nil, fmt.Errorf("client token empty")
+	}
+
 	var username string
 	if un, ok := d.GetOk("username"); ok {
-		username = un.(string)
+		if username = un.(string); username == "" {
+			return nil, fmt.Errorf("empty username in wallet")
+		}
 	} else if !ok {
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
-	err := req.Storage.Delete(ctx, walletStoragePath+"/"+username)
+	var address string
+	if addr, ok := d.GetOk("address"); ok {
+		address = addr.(string)
+	} else if !ok {
+		return nil, fmt.Errorf("missing address in wallet")
+	}
+
+	walletPath := getWalletPath(username, address)
+
+	err := req.Storage.Delete(ctx, walletPath)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting wallet: %w", err)
 	}
