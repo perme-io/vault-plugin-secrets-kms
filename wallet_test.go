@@ -1,10 +1,14 @@
 package kms
 
 import (
+	"context"
 	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
+	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
 )
@@ -94,4 +98,184 @@ func TestCreateWallet(t *testing.T) {
 
 	require.Nilf(t, err, "createWallet err: expected nil, actual=%v", err)
 	require.NotNilf(t, wallet, "createWallet wallet: expected not nil, actual=%v", wallet)
+}
+
+const (
+	username = "tesuser@email.com"
+	token    = "test-token"
+)
+
+// TestWallet mocks the creation, read, update, and delete
+// of the backend wallet for kms.
+func TestWallet(t *testing.T) {
+	b, reqStorage := getTestBackend(t)
+
+	t.Run("Test Wallet", func(t *testing.T) {
+		resp, err := testWalletCreate(t, b, reqStorage, map[string]interface{}{
+			"username": username,
+		})
+
+		assert.NoError(t, err)
+
+		var walletAddress string
+		if addr, ok := resp.Data["address"]; ok {
+			walletAddress = addr.(string)
+		}
+		t.Logf("wallet address : %v", walletAddress)
+
+		err = testWalletCreateWithEmptyUsername(t, b, reqStorage, map[string]interface{}{
+			"username": "",
+		})
+
+		assert.Error(t, err)
+
+		reqData := map[string]interface{}{
+			"username": username,
+			"address":  walletAddress,
+		}
+		expectedData := map[string]interface{}{
+			"address": walletAddress,
+		}
+		err = testWalletRead(t, b, reqStorage, reqData, expectedData)
+
+		assert.NoError(t, err)
+
+		resp, err = testWalletUpdate(t, b, reqStorage, map[string]interface{}{
+			"username": username,
+		})
+
+		assert.NoError(t, err)
+
+		if addr, ok := resp.Data["address"]; ok {
+			walletAddress = addr.(string)
+		}
+		t.Logf("updated wallet address : %v", walletAddress)
+
+		reqData["address"] = walletAddress
+		expectedData["address"] = walletAddress
+		err = testWalletRead(t, b, reqStorage, reqData, expectedData)
+
+		assert.NoError(t, err)
+
+		err = testWalletDelete(t, b, reqStorage, map[string]interface{}{
+			"username": username,
+			"address":  walletAddress,
+		})
+
+		assert.NoError(t, err)
+	})
+}
+
+func testWalletCreate(t *testing.T, b logical.Backend, s logical.Storage, d map[string]interface{}) (*logical.Response, error) {
+	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		Operation:   logical.CreateOperation,
+		ClientToken: token,
+		Path:        walletStoragePath,
+		Data:        d,
+		Storage:     s,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if resp != nil && resp.IsError() {
+		return nil, resp.Error()
+	}
+	return resp, nil
+}
+
+func testWalletCreateWithEmptyUsername(t *testing.T, b logical.Backend, s logical.Storage, d map[string]interface{}) error {
+	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		Operation:   logical.CreateOperation,
+		ClientToken: token,
+		Path:        walletStoragePath,
+		Data:        d,
+		Storage:     s,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if resp != nil && resp.IsError() {
+		return resp.Error()
+	}
+	return nil
+}
+
+func testWalletUpdate(t *testing.T, b logical.Backend, s logical.Storage, d map[string]interface{}) (*logical.Response, error) {
+	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		Operation:   logical.UpdateOperation,
+		ClientToken: token,
+		Path:        walletStoragePath,
+		Data:        d,
+		Storage:     s,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if resp != nil && resp.IsError() {
+		return nil, resp.Error()
+	}
+	return resp, nil
+}
+
+func testWalletRead(t *testing.T, b logical.Backend, s logical.Storage, d map[string]interface{}, expected map[string]interface{}) error {
+	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		Operation:   logical.ReadOperation,
+		ClientToken: token,
+		Path:        walletStoragePath,
+		Data:        d,
+		Storage:     s,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if resp == nil && expected == nil {
+		return nil
+	}
+
+	if resp.IsError() {
+		return resp.Error()
+	}
+
+	if len(resp.Data) != 2 {
+		return fmt.Errorf("read data mismatch (expected %d values, got %d)", len(expected), len(resp.Data))
+	}
+
+	for k, expectedV := range expected {
+		actualV, ok := resp.Data[k]
+
+		if !ok {
+			return fmt.Errorf(`expected data["%s"] = %v but was not included in read output"`, k, expectedV)
+		} else if expectedV != actualV {
+			return fmt.Errorf(`expected data["%s"] = %v, instead got %v"`, k, expectedV, actualV)
+		}
+	}
+
+	return nil
+}
+
+func testWalletDelete(t *testing.T, b logical.Backend, s logical.Storage, d map[string]interface{}) error {
+	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		Operation:   logical.DeleteOperation,
+		ClientToken: token,
+		Path:        walletStoragePath,
+		Data:        d,
+		Storage:     s,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if resp != nil && resp.IsError() {
+		return resp.Error()
+	}
+	return nil
 }

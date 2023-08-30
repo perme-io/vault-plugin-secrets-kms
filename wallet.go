@@ -32,6 +32,11 @@ func pathWallet(b *kmsBackend) []*framework.Path {
 					Description: "username of wallet",
 					Required:    true,
 				},
+				"address": {
+					Type:        framework.TypeString,
+					Description: "address of wallet",
+					Required:    false,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -51,6 +56,11 @@ func pathWallet(b *kmsBackend) []*framework.Path {
 			HelpDescription: pathWalletHelpDescription,
 		},
 	}
+}
+
+func getWalletPath(username string, address string) string {
+	userPath := username + "/" + address
+	return walletStoragePath + "/" + userPath
 }
 
 func getWallet(ctx context.Context, req *logical.Request, walletPath string) (*kmsWallet, error) {
@@ -73,10 +83,6 @@ func getWallet(ctx context.Context, req *logical.Request, walletPath string) (*k
 }
 
 func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	var username string
 	if un, ok := d.GetOk("username"); ok {
 		username = un.(string)
@@ -84,7 +90,14 @@ func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
-	walletPath := walletStoragePath + "/" + username
+	var address string
+	if addr, ok := d.GetOk("address"); ok {
+		address = addr.(string)
+	} else if !ok {
+		return nil, fmt.Errorf("missing address in wallet")
+	}
+
+	walletPath := getWalletPath(username, address)
 
 	wallet, err := getWallet(ctx, req, walletPath)
 	if err != nil {
@@ -128,13 +141,11 @@ func createWallet() (*kmsWallet, error) {
 }
 
 func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	var username string
 	if un, ok := d.GetOk("username"); ok {
-		username = un.(string)
+		if username = un.(string); username == "" {
+			return nil, fmt.Errorf("empty username in wallet")
+		}
 	} else if !ok {
 		return nil, fmt.Errorf("missing username in wallet")
 	}
@@ -144,7 +155,7 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("failed to create wallet")
 	}
 
-	walletPath := walletStoragePath + "/" + username
+	walletPath := getWalletPath(username, wallet.Address)
 	entry, err := logical.StorageEntryJSON(walletPath, wallet)
 	if err != nil {
 		return nil, err
@@ -154,18 +165,35 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 		return nil, err
 	}
 
-	return nil, nil
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"address": wallet.Address,
+		},
+	}
+
+	return resp, nil
 }
 
 func (b *kmsBackend) pathWalletDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	var username string
 	if un, ok := d.GetOk("username"); ok {
-		username = un.(string)
+		if username = un.(string); username == "" {
+			return nil, fmt.Errorf("empty username in wallet")
+		}
 	} else if !ok {
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
-	err := req.Storage.Delete(ctx, walletStoragePath+"/"+username)
+	var address string
+	if addr, ok := d.GetOk("address"); ok {
+		address = addr.(string)
+	} else if !ok {
+		return nil, fmt.Errorf("missing address in wallet")
+	}
+
+	walletPath := getWalletPath(username, address)
+
+	err := req.Storage.Delete(ctx, walletPath)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting wallet: %w", err)
 	}

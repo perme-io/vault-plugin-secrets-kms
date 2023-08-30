@@ -71,6 +71,11 @@ func pathSign(b *kmsBackend) []*framework.Path {
 					Description: "username of wallet",
 					Required:    true,
 				},
+				"address": {
+					Type:        framework.TypeString,
+					Description: "address of wallet",
+					Required:    true,
+				},
 				"txSerialized": {
 					Type:        framework.TypeString,
 					Description: "serialized transaction data",
@@ -92,15 +97,18 @@ func pathSign(b *kmsBackend) []*framework.Path {
 }
 
 func (b *kmsBackend) pathSignCreate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	var username string
 	if un, ok := d.GetOk("username"); ok {
 		username = un.(string)
 	} else if !ok {
 		return nil, fmt.Errorf("missing username in sign")
+	}
+
+	var address string
+	if addr, ok := d.GetOk("address"); ok {
+		address = addr.(string)
+	} else if !ok {
+		return nil, fmt.Errorf("missing address in wallet")
 	}
 
 	var txSerialized string
@@ -110,7 +118,7 @@ func (b *kmsBackend) pathSignCreate(ctx context.Context, req *logical.Request, d
 		return nil, fmt.Errorf("missing txSerialized in sign")
 	}
 
-	walletPath := walletStoragePath + "/" + username
+	walletPath := getWalletPath(username, address)
 
 	wallet, err := getWallet(ctx, req, walletPath)
 	if err != nil {
