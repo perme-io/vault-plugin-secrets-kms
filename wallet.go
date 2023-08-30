@@ -83,10 +83,6 @@ func getWallet(ctx context.Context, req *logical.Request, walletPath string) (*k
 }
 
 func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	var username string
 	if un, ok := d.GetOk("username"); ok {
 		username = un.(string)
@@ -145,10 +141,6 @@ func createWallet() (*kmsWallet, error) {
 }
 
 func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	var username string
 	if un, ok := d.GetOk("username"); ok {
 		if username = un.(string); username == "" {
@@ -183,10 +175,6 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 }
 
 func (b *kmsBackend) pathWalletDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	var username string
 	if un, ok := d.GetOk("username"); ok {
 		if username = un.(string); username == "" {

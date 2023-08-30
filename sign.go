@@ -97,10 +97,6 @@ func pathSign(b *kmsBackend) []*framework.Path {
 }
 
 func (b *kmsBackend) pathSignCreate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
-	}
-
 	var username string
 	if un, ok := d.GetOk("username"); ok {
 		username = un.(string)
