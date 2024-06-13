@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
-	kms "github.com/iconloop/vault-plugin-secrets-kms"
+	kms "github.com/perme-io/vault-plugin-secrets-kms"
 )
 
 func main() {

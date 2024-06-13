@@ -8,7 +8,7 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"golang.org/x/crypto/sha3"
+	"github.com/perme-io/vault-plugin-secrets-kms/chains"
 )
 
 const (
@@ -36,6 +36,11 @@ func pathWallet(b *kmsBackend) []*framework.Path {
 					Type:        framework.TypeString,
 					Description: "address of wallet",
 					Required:    false,
+				},
+				"chainName": {
+					Type:        framework.TypeString,
+					Description: "name of blockchain",
+					Required:    true,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -115,27 +120,28 @@ func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d
 	return resp, nil
 }
 
-func getPublicKeyAddress(pubKeyCompressed []byte) string {
-	pubKeyHash := sha3.Sum256(pubKeyCompressed[1:])
-
-	beginIndex := len(pubKeyHash) - publicKeyHashOffset
-	address := "hx" + hex.EncodeToString(pubKeyHash[beginIndex:])
-
-	return address
-}
-
-func createWallet() (*kmsWallet, error) {
+func createWallet(chainName chains.ChainName) (*kmsWallet, error) {
 	wallet := &kmsWallet{}
+	var chain chains.Chain
 
 	if privateKey, err := secp256k1.GeneratePrivateKey(); err == nil {
-		pubKeyUncompressed := privateKey.PubKey().SerializeUncompressed()
 
-		wallet.PrivateKey = hex.EncodeToString(privateKey.Serialize())
-		wallet.PublicKey = hex.EncodeToString(pubKeyUncompressed)
-		wallet.Address = getPublicKeyAddress(pubKeyUncompressed)
+		switch chainName {
+		case chains.ICON:
+			chain = chains.IconChain{PrivateKey: privateKey}
+		case chains.AERGO:
+			chain = chains.AergoChain{PrivateKey: privateKey}
+		default:
+			return nil, fmt.Errorf("unknown chain name: %v", chainName)
+		}
 	} else {
 		return nil, err
 	}
+
+	pubKeySerialized := chain.GetPublicKeySerialized()
+	wallet.PrivateKey = hex.EncodeToString(chain.GetPrivateKeySerialized())
+	wallet.PublicKey = hex.EncodeToString(pubKeySerialized)
+	wallet.Address = chain.GetPublicKeyAddress(pubKeySerialized)
 
 	return wallet, nil
 }
@@ -150,9 +156,15 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
-	wallet, err := createWallet()
+	var chainName chains.ChainName
+	if wtype, ok := d.GetOk("chainName"); ok {
+		chainName = chains.ChainName(wtype.(string))
+	}
+	b.Logger().Debug("chainName:", chainName)
+
+	wallet, err := createWallet(chainName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create wallet")
+		return nil, fmt.Errorf("failed to create wallet. err=%v", err)
 	}
 
 	walletPath := getWalletPath(username, wallet.Address)

@@ -15,7 +15,7 @@ import (
 )
 
 func TestTxSign(t *testing.T) {
-	wallet, _ := createWallet()
+	wallet, _ := createWallet("icon")
 
 	// privateKeyString := "2f1f6284e96d217bca90c0d7e4b6971b83dd7a04e1f5cef9cb65e26451046368"
 	privKeyBytes, err := hex.DecodeString(wallet.PrivateKey)
@@ -137,7 +137,8 @@ func TestSign(t *testing.T) {
 
 	t.Run("Test Sign", func(t *testing.T) {
 		resp, err := testWalletCreate(t, b, reqStorage, map[string]interface{}{
-			"username": username,
+			"username":  username,
+			"chainName": "icon",
 		})
 
 		assert.NoError(t, err)
