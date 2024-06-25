@@ -1,6 +1,8 @@
 package chains
 
 import (
+	"fmt"
+
 	"github.com/btcsuite/btcutil/base58"
 )
 
@@ -20,4 +22,8 @@ func (c AergoChain) GetPublicKeySerialized() []byte {
 
 func (c AergoChain) GetPublicKeyAddress(pubKeySerialized []byte) string {
 	return base58.CheckEncode(pubKeySerialized, AergoAddressVersion)
+}
+
+func (c AergoChain) SignCompact(serializedString string) (string, error) {
+	return "", fmt.Errorf("aergo sign not supported")
 }

@@ -13,6 +13,7 @@ type Chain interface {
 	GetPrivateKeySerialized() []byte
 	GetPublicKeySerialized() []byte
 	GetPublicKeyAddress(b []byte) string
+	SignCompact(serializedString string) (string, error)
 }
 
 type BaseChain struct {

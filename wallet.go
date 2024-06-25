@@ -40,7 +40,7 @@ func pathWallet(b *kmsBackend) []*framework.Path {
 				"chainName": {
 					Type:        framework.TypeString,
 					Description: "name of blockchain",
-					Required:    true,
+					Required:    false,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -159,6 +159,8 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 	var chainName chains.ChainName
 	if wtype, ok := d.GetOk("chainName"); ok {
 		chainName = chains.ChainName(wtype.(string))
+	} else {
+		return nil, fmt.Errorf("missing chainName in wallet")
 	}
 	b.Logger().Debug("chainName:", chainName)
 
