@@ -15,3 +15,9 @@ Start unittest `*_test.go` files.
 ```shell
 make test
 ```
+
+Start specific test.
+
+```shell
+go test -v -run CreateWallet
+```

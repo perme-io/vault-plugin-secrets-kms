@@ -23,7 +23,7 @@ build-$(MACOS):
 build: $(BUILD_TARGETS)
 
 test:
-	go test -v
+	go test -v ./...
 
 clean:
 	@rm -rf $(VAULT_DIR)

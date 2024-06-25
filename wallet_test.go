@@ -8,6 +8,7 @@ import (
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/perme-io/vault-plugin-secrets-kms/chains"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
@@ -63,41 +64,87 @@ func TestSecp256k1(t *testing.T) {
 }
 
 func TestPubKeyAddress(t *testing.T) {
-	walletEnv := testWalletEnv{}
-
-	privKeyString := "1a5e70bfd427ec9ec3decf8d6e3461dfb4dbbde4351e071d9728d96e711e1b9c"
-	expectedAddress := "hx5443d0db003fd7202046bbf31eaeade60af20c41"
-
-	privKeyBytes, err := hex.DecodeString(privKeyString)
-	if err != nil {
-		t.Errorf("error=%v", err)
+	testCases := []struct {
+		chainName       chains.ChainName
+		privKeyString   string
+		expectedAddress string
+	}{
+		{
+			chains.ICON,
+			"1a5e70bfd427ec9ec3decf8d6e3461dfb4dbbde4351e071d9728d96e711e1b9c",
+			"hx5443d0db003fd7202046bbf31eaeade60af20c41",
+		},
+		{
+			chains.AERGO,
+			"83e992df7015dcc946ab9b404b65e2a786913761e9d09f45675e9dccd1a47a2e",
+			"AmN5kDEYAxUzFvjX6541AVrPkzeg2H4Qxc79ssBWUpqNLbur9M36",
+		},
 	}
 
-	privateKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
+	for _, tc := range testCases {
+		testName := fmt.Sprintf("Test Public Key Address %s", tc.chainName)
+		t.Run(testName, func(t *testing.T) {
+			walletEnv := testWalletEnv{}
 
-	walletEnv.PrivateKey = privateKey
-	walletEnv.PrivateKeyString = hex.EncodeToString(walletEnv.PrivateKey.Serialize())
-	walletEnv.PublicKey = privateKey.PubKey()
+			privKeyBytes, err := hex.DecodeString(tc.privKeyString)
+			if err != nil {
+				t.Errorf("error=%v", err)
+			}
 
-	pubKeyCompressed := walletEnv.PublicKey.SerializeUncompressed()
-	pubKeyHash := sha3.Sum256(pubKeyCompressed[1:])
-	pubAddress := hex.EncodeToString(pubKeyHash[len(pubKeyHash)-20:])
+			privateKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
 
-	walletEnv.PubAddress = "hx" + pubAddress
+			walletEnv.PrivateKey = privateKey
+			walletEnv.PrivateKeyString = hex.EncodeToString(walletEnv.PrivateKey.Serialize())
+			walletEnv.PublicKey = privateKey.PubKey()
 
-	t.Logf("privateKey : %v", walletEnv.PrivateKey)
-	t.Logf("privateKey string : %v", walletEnv.PrivateKeyString)
-	t.Logf("publicKey uncompressed : %v", hex.EncodeToString(walletEnv.PublicKey.SerializeUncompressed()))
-	t.Logf("publicKey address : %v", walletEnv.PubAddress)
+			var chain chains.Chain
+			switch tc.chainName {
+			case chains.ICON:
+				chain = chains.IconChain{PrivateKey: privateKey}
+			case chains.AERGO:
+				chain = chains.AergoChain{PrivateKey: privateKey}
+			default:
+				assert.FailNowf(t, "unsupported chain", "chainName=%v", tc.chainName)
+			}
+			pubKeySerialized := chain.GetPublicKeySerialized()
+			walletEnv.PubAddress = chain.GetPublicKeyAddress(pubKeySerialized)
 
-	require.Equalf(t, expectedAddress, walletEnv.PubAddress, "expected=%v, actual=%v", expectedAddress, walletEnv.PubAddress)
+			t.Logf("privateKey : %v", walletEnv.PrivateKey)
+			t.Logf("privateKey string : %v", walletEnv.PrivateKeyString)
+			t.Logf("publicKey serialized : %v", hex.EncodeToString(pubKeySerialized))
+			t.Logf("publicKey address : %v", walletEnv.PubAddress)
+
+			require.Equalf(t, tc.expectedAddress, walletEnv.PubAddress, "expected=%v, actual=%v", tc.expectedAddress, walletEnv.PubAddress)
+		})
+	}
 }
 
 func TestCreateWallet(t *testing.T) {
-	wallet, err := createWallet()
+	testCases := []struct {
+		chainName      chains.ChainName
+		expectedErrMsg interface{}
+	}{
+		{chains.ICON, nil},
+		{chains.AERGO, nil},
+		{"solana", "unknown chain name"},
+	}
 
-	require.Nilf(t, err, "createWallet err: expected nil, actual=%v", err)
-	require.NotNilf(t, wallet, "createWallet wallet: expected not nil, actual=%v", wallet)
+	for _, tc := range testCases {
+		testName := fmt.Sprintf("Test Create Wallet %s", tc.chainName)
+		t.Run(testName, func(t *testing.T) {
+			wallet, err := createWallet(tc.chainName)
+			t.Logf("chainName=%v, error=%v", tc.chainName, err)
+
+			switch tc.chainName {
+			case chains.ICON, chains.AERGO:
+				require.Nilf(t, err, "createWallet err: expected nil, actual=%v", err)
+				require.NotNilf(t, wallet, "createWallet wallet: expected not nil, actual=%v", wallet)
+			default:
+				expectedErrMsg := tc.expectedErrMsg.(string)
+				require.ErrorContainsf(t, err, expectedErrMsg, "createWallet err: expected=%v, actual=%v", expectedErrMsg, err.Error())
+			}
+		})
+	}
 }
 
 const (
@@ -112,7 +159,8 @@ func TestWallet(t *testing.T) {
 
 	t.Run("Test Wallet", func(t *testing.T) {
 		resp, err := testWalletCreate(t, b, reqStorage, map[string]interface{}{
-			"username": username,
+			"username":  username,
+			"chainName": "icon",
 		})
 
 		assert.NoError(t, err)
@@ -141,7 +189,8 @@ func TestWallet(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp, err = testWalletUpdate(t, b, reqStorage, map[string]interface{}{
-			"username": username,
+			"username":  username,
+			"chainName": "icon",
 		})
 
 		assert.NoError(t, err)
@@ -158,8 +207,9 @@ func TestWallet(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = testWalletDelete(t, b, reqStorage, map[string]interface{}{
-			"username": username,
-			"address":  walletAddress,
+			"username":  username,
+			"address":   walletAddress,
+			"chainName": "icon",
 		})
 
 		assert.NoError(t, err)

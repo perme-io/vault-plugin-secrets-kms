@@ -1,13 +1,15 @@
-module github.com/iconloop/vault-plugin-secrets-kms
+module github.com/perme-io/vault-plugin-secrets-kms
 
 go 1.20
 
 require (
+	github.com/btcsuite/btcutil v1.0.2
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/vault/api v1.9.2
 	github.com/hashicorp/vault/sdk v0.9.1
 	github.com/stretchr/testify v1.8.4
+	golang.org/x/crypto v0.6.0
 )
 
 require (
@@ -51,7 +53,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect

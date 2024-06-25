@@ -2,63 +2,38 @@ package kms
 
 import (
 	"context"
-	b64 "encoding/base64"
 	"encoding/hex"
 	"fmt"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"golang.org/x/crypto/sha3"
+	"github.com/perme-io/vault-plugin-secrets-kms/chains"
 )
 
-const (
-	// https://github.com/decred/dcrd/blob/dcrec/secp256k1/v4.2.0/dcrec/secp256k1/ecdsa/signature.go#L738
-	compactMagicOffset = 27
-)
-
-// rearrangeSignature
-//
-// reverse true: <32-byte R><32-byte S><1-byte compact sig recovery code>
-//
-// reverse false: <1-byte compact sig recovery code><32-byte R><32-byte S>
-func rearrangeSignature(signature []byte, reverse bool) []byte {
-	var newSignature []byte
-
-	if reverse {
-		recid := signature[0] - compactMagicOffset
-		newSignature = append(newSignature, signature[1:]...)
-		newSignature = append(newSignature, recid)
-	} else {
-		recid := signature[len(signature)-1] + compactMagicOffset
-		newSignature = append(newSignature, recid)
-		newSignature = append(newSignature, signature[:len(signature)-1]...)
-	}
-
-	return newSignature
-}
-
-func signCompact(privKeyString string, serializedString string) (string, error) {
+func sign(privKeyString string, chainName chains.ChainName, serializedString string) (string, error) {
 	privKeyBytes, err := hex.DecodeString(privKeyString)
 	if err != nil {
 		return "", err
 	}
 
-	privKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
+	var chain chains.Chain
+	privateKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
 
-	// Sign a tx using the private key.
-	serializedBytes := []byte(serializedString)
-	messageHash := sha3.Sum256(serializedBytes)
+	switch chainName {
+	case chains.ICON:
+		chain = chains.IconChain{PrivateKey: privateKey}
+	case chains.AERGO:
+		chain = chains.AergoChain{PrivateKey: privateKey}
+	default:
+		return "", fmt.Errorf("unknown chain name: %v", chainName)
+	}
 
-	// Compact signature format:
-	// <1-byte compact sig recovery code><32-byte R><32-byte S>
-	signature := ecdsa.SignCompact(privKey, messageHash[:], false)
-
-	compactSig := rearrangeSignature(signature, true)
-
-	base64Sign := b64.StdEncoding.EncodeToString(compactSig)
-	return base64Sign, nil
+	if base64Sign, signErr := chain.SignCompact(serializedString); signErr != nil {
+		return "", signErr
+	} else {
+		return base64Sign, nil
+	}
 }
 
 func pathSign(b *kmsBackend) []*framework.Path {
@@ -74,6 +49,11 @@ func pathSign(b *kmsBackend) []*framework.Path {
 				"address": {
 					Type:        framework.TypeString,
 					Description: "address of wallet",
+					Required:    true,
+				},
+				"chainName": {
+					Type:        framework.TypeString,
+					Description: "name of blockchain",
 					Required:    true,
 				},
 				"txSerialized": {
@@ -108,8 +88,16 @@ func (b *kmsBackend) pathSignCreate(ctx context.Context, req *logical.Request, d
 	if addr, ok := d.GetOk("address"); ok {
 		address = addr.(string)
 	} else if !ok {
-		return nil, fmt.Errorf("missing address in wallet")
+		return nil, fmt.Errorf("missing address in sign")
 	}
+
+	var chainName chains.ChainName
+	if wtype, ok := d.GetOk("chainName"); ok {
+		chainName = chains.ChainName(wtype.(string))
+	} else if !ok {
+		return nil, fmt.Errorf("missing chainName in sign")
+	}
+	b.Logger().Debug("chainName:", chainName)
 
 	var txSerialized string
 	if ts, ok := d.GetOk("txSerialized"); ok {
@@ -125,7 +113,7 @@ func (b *kmsBackend) pathSignCreate(ctx context.Context, req *logical.Request, d
 		return nil, err
 	}
 
-	signature, err := signCompact(wallet.PrivateKey, txSerialized)
+	signature, err := sign(wallet.PrivateKey, chainName, txSerialized)
 	if err != nil {
 		return nil, fmt.Errorf("faild to sign: err=%v", err)
 	}
