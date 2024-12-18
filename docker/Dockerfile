@@ -7,6 +7,4 @@ RUN apk add jq curl
 COPY docker/docker-entrypoint.sh /usr/local/bin/
 COPY docker/scripts /vault/scripts/
 COPY docker/config.d /vault/config.d/
-ENV VAULT_LOCAL_CONFIG='{"backend":{"file":{"path":"/vault/data"}}}'
-RUN mkdir /vault/data && chown vault:vault /vault/data
-VOLUME /vault/data
+ENV VAULT_LOCAL_CONFIG='{"backend":{"file":{"path":"/vault/file"}}}'

@@ -2,7 +2,7 @@
   "plugin_directory": "/vault/plugins",
   "backend": {
     "file": {
-      "path": "/vault/data"
+      "path": "/vault/file"
     }
   },
   "api_addr": "http://localhost:8200",
