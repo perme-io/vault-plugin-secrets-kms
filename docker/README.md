@@ -2,7 +2,6 @@
 dockerize based on https://hub.docker.com/r/hashicorp/vault 
 
 ## Build
-before docker image build, build binary by `make build-linux` command.  
 ```shell
 $ ./docker/build.sh
 ```
