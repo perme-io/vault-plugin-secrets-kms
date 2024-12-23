@@ -52,13 +52,15 @@ fi
 # Look for Vault subcommands.
 if [ "$1" = 'server' ]; then
     shift
+    export VAULT_DEV_ROOT_TOKEN_ID=${VAULT_DEV_ROOT_TOKEN_ID:-dev-only-token}
+    export VAULT_DEV_LISTEN_ADDRESS=${VAULT_DEV_LISTEN_ADDRESS:-0.0.0.0:8200}
     set -- vault server \
         -config="$VAULT_CONFIG_DIR" \
-        -dev-root-token-id="${VAULT_DEV_ROOT_TOKEN_ID:-dev-only-token}" \
-        -dev-listen-address="${VAULT_DEV_LISTEN_ADDRESS:-"0.0.0.0:8200"}" \
+        -dev-root-token-id="${VAULT_DEV_ROOT_TOKEN_ID}" \
+        -dev-listen-address="${VAULT_DEV_LISTEN_ADDRESS}" \
         -dev-plugin-dir=/vault/plugins \
         "$@"
-    BG_SCRIPT="sh /vault/scripts/enable_plugin.sh"
+    BG_SCRIPT="sh /vault/scripts/init.sh"
 elif [ "$1" = 'version' ]; then
     # This needs a special case because there's no help output.
     set -- vault "$@"

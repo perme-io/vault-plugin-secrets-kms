@@ -17,15 +17,20 @@ embed to `/vault/plugins/vault-plugin-secrets-kms`
 
 ### Scripts
 embed to `/vault/scripts`
-* register_plugin.sh : register plugin with `vault plugin register` command
-* enable_plugin.sh [MOUNT_PATH] : enable registered plugin with `vault secrets enable` command, default mount path is `/kms`
-* init.sh : initialize with `vault operator init` and `vault operator unseal` commands,
-  and execute `register_plugin.sh`, `enable_plugin.sh`
+* init.sh : run tasks(initialize, unseal, register plugin, enable plugins) with below environment variables.
+  - VAULT_ADDR : vault api address, default as http://localhost:8200
+    priority as 
+  - INIT_RESULT_FILE : json file path for result of `vault operator init` command, default as /vault/file/init_result.json
+  - VAULT_UNSEAL_KEY : unseal key, required if `INIT_RESULT_FILE` does not exists.
+  - VAULT_TOKEN : vault token for tasks(register plugin, enable plugins) , required if `INIT_RESULT_FILE` does not exists.  
+    priority as `VAULT_TOKEN` > `INIT_RESULT_FILE` > `~/.vault-token` > `VAULT_DEV_ROOT_TOKEN_ID`
 
 ### Configuration examples
-embed to `/vault/config.d`
-* single.json : single server without TLS, file backend
-* cluster.hcl : cluster server without TLS, raft backend
+* embed to `/vault/config` : only for starting with `server` command
+  - default.json : `{"plugin_directory":"/vault/plugins"}`
+* embed to `/vault/config.d`
+  - single.json : single server without TLS, file backend
+  - cluster.hcl : cluster server without TLS, raft backend
 
 ## Running Vault for Development
 Running "dev" mode with default command(`server -dev`)  
@@ -34,14 +39,14 @@ Running "dev" mode with default command(`server -dev`)
 ```shell 
 $ docker run -d --cap-add=IPC_LOCK parameta-w/vault
 ```
-Optional environment variables
-* `VAULT_LOCAL_CONFIG`: configuration JSON format for `/vault/config/local.json`, (default as `{"backend":{"file":{"path":"/vault/file"}}}`)
-* `VAULT_DEV_ROOT_TOKEN_ID`: This sets the ID of the initial generated root token to the given value (default as dev-only-token)
-* `VAULT_DEV_LISTEN_ADDRESS`: This sets the IP:port of the development server listener (default as 0.0.0.0:8200)
+Optional environment variables 
+* VAULT_LOCAL_CONFIG : configuration JSON format for `/vault/config/local.json`, (default as `{"backend":{"file":{"path":"/vault/file"}}}`)
+* VAULT_DEV_ROOT_TOKEN_ID : This sets the ID of the initial generated root token to the given value (default as dev-only-token)
+* VAULT_DEV_LISTEN_ADDRESS : This sets the IP:port of the development server listener (default as 0.0.0.0:8200)  
+  if start with `server` command, default values of `VAULT_DEV_ROOT_TOKEN_ID` and `VAULT_DEV_LISTEN_ADDRESS` could effect `init.sh`
 
 ### example for docker-compose
-use default configuration for dev mode running.
-volume mount for persistent storage data and expose port for api and ui. 
+run dev mode (in-memory), expose port for api and ui. 
 ```yaml
 version: '3.9'
 services:
@@ -49,6 +54,22 @@ services:
     image: parameta-w/vault
     cap_add:
       - IPC_LOCK
+    ports:
+      - "8200:8200"
+```
+
+#### persist
+volume mount for persistent storage data and expose port for api and ui.
+```yaml
+version: '3.9'
+services:
+  vault:
+    image: parameta-w/vault
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - VAULT_LOCAL_CONFIG={"listener":[{"tcp":{"address":"0.0.0.0:8200","tls_disable":true}}],"api_addr":"http://localhost:8200","backend":{"file":{"path":"/vault/file"}}}
+    command: server
     volumes:
       - vault-data:/vault/file
     ports:
@@ -61,7 +82,7 @@ volumes:
 To run server in production, the container-command MUST start with `vault server -config=/path/to/config`.  
 And the operator MUST register and enable `vault-plugin-secrets-kms` plugin after vault initialize. 
 
-### example for docker-compose
+#### example for docker-compose
 use embed example configuration([`/vault/config.d/cluster.hcl`](config.d/cluster.hcl)) for server mode running,
 (*DO NOT USE* the built-in example configurations directly in production)
  
