@@ -2,11 +2,11 @@ FROM golang:1.23.6-alpine AS builder
 WORKDIR /work
 COPY . /work
 RUN go build -o build/vault-plugin-secrets-kms cmd/main.go
+ENV GODEBUG=x509negativeserial=1
 RUN apk add git patch make bash && \
     git clone https://github.com/hashicorp/vault.git -b v1.13.12 && cd vault && \
     patch -p1 < ../docker/vault/1.13.12.patch && \
     go mod tidy && go mod verify && \
-    export GODEBUG=x509negativeserial=1 && \
     make bin
 
 # FROM hashicorp/vault:1.13.12
