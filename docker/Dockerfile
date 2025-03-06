@@ -41,6 +41,7 @@ RUN addgroup ${NAME} && adduser -S -G ${NAME} ${NAME}
 
 RUN apk add --no-cache libcap su-exec dumb-init tzdata
 
+ENV GODEBUG=x509negativeserial=1
 COPY --from=builder /work/vault/bin/vault /bin/vault
 
 # /vault/logs is made available to use as a location to store audit logs, if
