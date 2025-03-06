@@ -9,7 +9,7 @@ TAG=${TAG:-latest}
 IMAGE=${NAMESPACE}/${REPO}:${TAG}
 
 echo "Building image ${IMAGE}"
-docker build \
+docker build --no-cache \
     -t ${IMAGE} \
     -f ${DOCKER_DIR}/Dockerfile \
     ${ROOT}
