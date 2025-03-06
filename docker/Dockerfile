@@ -7,6 +7,7 @@ RUN apk add git patch make bash && \
     git clone https://github.com/hashicorp/vault.git -b v1.13.12 && cd vault && \
     patch -p1 < ../docker/vault/1.13.12.patch && \
     go mod tidy && go mod verify && \
+    go env && \
     make bin
 
 # FROM hashicorp/vault:1.13.12
