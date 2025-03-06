@@ -1,5 +1,6 @@
 FROM node:14-alpine AS ui-builder
 RUN apk add git make bash python3 g++ && \
+    git config --global http.postBuffer 524288000 && \
     git clone https://github.com/hashicorp/vault.git -b v1.13.12 && cd vault && \
     make static-dist
 
