@@ -1,10 +1,16 @@
+FROM node:14-alpine AS ui-builder
+RUN apk add git make bash python3 g++ && \
+    git clone https://github.com/hashicorp/vault.git -b v1.13.12 && cd vault && \
+    make static-dist
+
 FROM golang:1.23.6-alpine AS builder
 WORKDIR /work
 COPY . /work
 RUN go build -o build/vault-plugin-secrets-kms cmd/main.go
+COPY --from=ui-builder /vault /work/vault
 ENV GODEBUG=x509negativeserial=1
 RUN apk add git patch make bash && \
-    git clone https://github.com/hashicorp/vault.git -b v1.13.12 && cd vault && \
+    cd vault && \
     patch -p1 < ../docker/vault/1.13.12.patch && \
     go mod tidy && go mod verify && \
     go env && \
