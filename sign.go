@@ -80,21 +80,21 @@ func (b *kmsBackend) pathSignCreate(ctx context.Context, req *logical.Request, d
 	var username string
 	if un, ok := d.GetOk("username"); ok {
 		username = un.(string)
-	} else if !ok {
+	} else {
 		return nil, fmt.Errorf("missing username in sign")
 	}
 
 	var address string
 	if addr, ok := d.GetOk("address"); ok {
 		address = addr.(string)
-	} else if !ok {
+	} else {
 		return nil, fmt.Errorf("missing address in sign")
 	}
 
 	var chainName chains.ChainName
 	if wtype, ok := d.GetOk("chainName"); ok {
 		chainName = chains.ChainName(wtype.(string))
-	} else if !ok {
+	} else {
 		return nil, fmt.Errorf("missing chainName in sign")
 	}
 	b.Logger().Debug("chainName:", chainName)
@@ -102,7 +102,7 @@ func (b *kmsBackend) pathSignCreate(ctx context.Context, req *logical.Request, d
 	var txSerialized string
 	if ts, ok := d.GetOk("txSerialized"); ok {
 		txSerialized = ts.(string)
-	} else if !ok {
+	} else {
 		return nil, fmt.Errorf("missing txSerialized in sign")
 	}
 

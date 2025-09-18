@@ -12,8 +12,7 @@ import (
 )
 
 const (
-	walletStoragePath   = "wallet"
-	publicKeyHashOffset = 20
+	walletStoragePath = "wallet"
 )
 
 type kmsWallet struct {
@@ -91,14 +90,14 @@ func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d
 	var username string
 	if un, ok := d.GetOk("username"); ok {
 		username = un.(string)
-	} else if !ok {
+	} else {
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
 	var address string
 	if addr, ok := d.GetOk("address"); ok {
 		address = addr.(string)
-	} else if !ok {
+	} else {
 		return nil, fmt.Errorf("missing address in wallet")
 	}
 
@@ -152,7 +151,7 @@ func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request,
 		if username = un.(string); username == "" {
 			return nil, fmt.Errorf("empty username in wallet")
 		}
-	} else if !ok {
+	} else {
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
@@ -194,14 +193,14 @@ func (b *kmsBackend) pathWalletDelete(ctx context.Context, req *logical.Request,
 		if username = un.(string); username == "" {
 			return nil, fmt.Errorf("empty username in wallet")
 		}
-	} else if !ok {
+	} else {
 		return nil, fmt.Errorf("missing username in wallet")
 	}
 
 	var address string
 	if addr, ok := d.GetOk("address"); ok {
 		address = addr.(string)
-	} else if !ok {
+	} else {
 		return nil, fmt.Errorf("missing address in wallet")
 	}
 
