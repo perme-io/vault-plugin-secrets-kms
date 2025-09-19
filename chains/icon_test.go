@@ -45,7 +45,7 @@ func TestIconTxSignCompactSerialized(t *testing.T) {
 	}
 
 	chain := IconChain{PrivateKey: secp256k1.PrivKeyFromBytes(privKeyBytes)}
-	signature, err := chain.SignCompact(serializedString)
+	signature, err := chain.SignCompact(messageHash[:])
 	if err != nil {
 		t.Errorf("error=%v", err)
 	}

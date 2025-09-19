@@ -120,29 +120,23 @@ func (b *kmsBackend) pathWalletRead(ctx context.Context, req *logical.Request, d
 }
 
 func createWallet(chainName chains.ChainName) (*kmsWallet, error) {
-	wallet := &kmsWallet{}
 	var chain chains.Chain
 
 	if privateKey, err := secp256k1.GeneratePrivateKey(); err == nil {
-
-		switch chainName {
-		case chains.ICON:
-			chain = chains.IconChain{PrivateKey: privateKey}
-		case chains.AERGO:
-			chain = chains.AergoChain{PrivateKey: privateKey}
-		default:
-			return nil, fmt.Errorf("unknown chain name: %v", chainName)
+		chain, err = chains.NewChain(chainName, privateKey)
+		if err != nil {
+			return nil, err
 		}
 	} else {
 		return nil, err
 	}
 
 	pubKeySerialized := chain.GetPublicKeySerialized()
-	wallet.PrivateKey = hex.EncodeToString(chain.GetPrivateKeySerialized())
-	wallet.PublicKey = hex.EncodeToString(pubKeySerialized)
-	wallet.Address = chain.GetPublicKeyAddress(pubKeySerialized)
-
-	return wallet, nil
+	return &kmsWallet{
+		PrivateKey: hex.EncodeToString(chain.GetPrivateKeySerialized()),
+		PublicKey:  hex.EncodeToString(pubKeySerialized),
+		Address:    chain.GetPublicKeyAddress(pubKeySerialized),
+	}, nil
 }
 
 func (b *kmsBackend) pathWalletCreate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

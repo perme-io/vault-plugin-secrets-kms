@@ -24,6 +24,6 @@ func (c AergoChain) GetPublicKeyAddress(pubKeySerialized []byte) string {
 	return base58.CheckEncode(pubKeySerialized, AergoAddressVersion)
 }
 
-func (c AergoChain) SignCompact(serializedString string) (string, error) {
+func (c AergoChain) SignCompact(msgHash []byte) (string, error) {
 	return "", fmt.Errorf("aergo sign not supported")
 }

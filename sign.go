@@ -9,32 +9,8 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/perme-io/vault-plugin-secrets-kms/chains"
+	"golang.org/x/crypto/sha3"
 )
-
-func sign(privKeyString string, chainName chains.ChainName, serializedString string) (string, error) {
-	privKeyBytes, err := hex.DecodeString(privKeyString)
-	if err != nil {
-		return "", err
-	}
-
-	var chain chains.Chain
-	privateKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
-
-	switch chainName {
-	case chains.ICON:
-		chain = chains.IconChain{PrivateKey: privateKey}
-	case chains.AERGO:
-		chain = chains.AergoChain{PrivateKey: privateKey}
-	default:
-		return "", fmt.Errorf("unknown chain name: %v", chainName)
-	}
-
-	if base64Sign, signErr := chain.SignCompact(serializedString); signErr != nil {
-		return "", signErr
-	} else {
-		return base64Sign, nil
-	}
-}
 
 func pathSign(b *kmsBackend) []*framework.Path {
 	return []*framework.Path{
@@ -59,7 +35,12 @@ func pathSign(b *kmsBackend) []*framework.Path {
 				"txSerialized": {
 					Type:        framework.TypeString,
 					Description: "serialized transaction data",
-					Required:    true,
+					Required:    false,
+				},
+				"msgHash": {
+					Type:        framework.TypeString,
+					Description: "an arbitrary 32-byte message hash to sign, expressed as a hex string",
+					Required:    false,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -97,40 +78,51 @@ func (b *kmsBackend) pathSignCreate(ctx context.Context, req *logical.Request, d
 	} else {
 		return nil, fmt.Errorf("missing chainName in sign")
 	}
-	b.Logger().Debug("chainName:", chainName)
 
-	var txSerialized string
+	var hashBytes []byte
 	if ts, ok := d.GetOk("txSerialized"); ok {
-		txSerialized = ts.(string)
+		txSerialized := ts.(string)
+		digest := sha3.Sum256([]byte(txSerialized))
+		hashBytes = digest[:]
+	} else if mh, ok := d.GetOk("msgHash"); ok {
+		hexString := mh.(string)
+		hashBytes, _ = hex.DecodeString(hexString)
 	} else {
-		return nil, fmt.Errorf("missing txSerialized in sign")
+		return nil, fmt.Errorf("missing txSerialized or msgHash in sign")
+	}
+	if len(hashBytes) != 32 {
+		return nil, fmt.Errorf("invalid hash length")
 	}
 
 	walletPath := getWalletPath(username, address)
-
 	wallet, err := getWallet(ctx, req, walletPath)
 	if err != nil {
 		return nil, err
 	}
 
-	signature, err := sign(wallet.PrivateKey, chainName, txSerialized)
-	if err != nil {
-		return nil, fmt.Errorf("faild to sign: err=%v", err)
+	if privKeyBytes, err := hex.DecodeString(wallet.PrivateKey); err == nil {
+		privateKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
+		chain, err := chains.NewChain(chainName, privateKey)
+		if err != nil {
+			return nil, err
+		}
+
+		if signature, err := chain.SignCompact(hashBytes); err == nil {
+			return &logical.Response{
+				Data: map[string]interface{}{
+					"signature": signature,
+				},
+			}, nil
+		}
 	}
 
-	response := &logical.Response{
-		Data: map[string]interface{}{
-			"signature": signature,
-		},
-	}
-
-	return response, nil
+	return nil, fmt.Errorf("faild to sign: err=%v", err)
 }
 
 const (
 	pathSignHelpSynopsis    = `Manages the Vault signature for send transaction.`
 	pathSignHelpDescription = `
-This path allows you to create signature used to send transaction.
-You can get a signature to send transaction using user wallet by setting the username and txSeriailzed field.
+This path lets you create a signature for sending a transaction.
+You can get a signature from the user's wallet by providing the username and txSerialized (or msgHash) fields.
 `
 )

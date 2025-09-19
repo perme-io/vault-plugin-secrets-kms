@@ -33,22 +33,10 @@ func (c IconChain) GetPublicKeyAddress(pubKeySerialized []byte) string {
 	return address
 }
 
-func (c IconChain) SignCompact(serializedString string) (string, error) {
-	// privKeyBytes, err := hex.DecodeString(c.privKeyString)
-	// if err != nil {
-	// 	return "", err
-	// }
-
-	// privKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
-	privKey := c.PrivateKey
-
-	// Sign a tx using the private key.
-	serializedBytes := []byte(serializedString)
-	messageHash := sha3.Sum256(serializedBytes)
-
+func (c IconChain) SignCompact(msgHash []byte) (string, error) {
 	// Compact signature format:
 	// <1-byte compact sig recovery code><32-byte R><32-byte S>
-	signature := ecdsa.SignCompact(privKey, messageHash[:], false)
+	signature := ecdsa.SignCompact(c.PrivateKey, msgHash, false)
 
 	compactSig := rearrangeSignature(signature, true)
 
