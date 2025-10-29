@@ -11,6 +11,7 @@ type ChainName string
 const (
 	AERGO ChainName = "aergo"
 	ICON  ChainName = "icon"
+	ETHER ChainName = "ether"
 )
 
 type Chain interface {
@@ -30,6 +31,8 @@ func NewChain(chainName ChainName, privateKey *secp256k1.PrivateKey) (Chain, err
 		return IconChain{PrivateKey: privateKey}, nil
 	case AERGO:
 		return AergoChain{PrivateKey: privateKey}, nil
+	case ETHER:
+		return EtherChain{PrivateKey: privateKey}, nil
 	}
 	return nil, fmt.Errorf("unknown chain name: %v", chainName)
 }
